@@ -1,0 +1,528 @@
+/* style.css */
+body {
+    background-color: blue;
+}
+
+.welcome {
+    position: absolute;
+    background-color: rgb(129, 199, 222);
+    left:200px;
+    height: 100%;
+    width: 87%;
+    
+    
+}
+
+.form-container {
+    width: 300px;
+    margin: 0 auto;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.form-container input {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+}
+
+.form-container input[type="submit"] {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.form-container input[type="submit"]:hover {
+    background-color: #45a049;
+}
+
+.side {
+    position: absolute;
+    margin-left: 0;
+    margin-right: 0;
+    left: 0;
+    top: 0;
+    bottom:0;
+    width: 200px;
+    height: 100%;
+    background-color: #a1a1a1;
+    
+    
+}
+
+.top {
+    position: relative;
+    margin-bottom: 10px;
+    width: 100%;
+    box-sizing: border-box;
+    border: 0px solid #3f81c4;
+    border-radius: 3px;
+    height: 40px;
+    
+        
+}
+
+.bar1,
+.bar2,
+.bar3 {
+    width: 35px;
+    height: 5px;
+    padding-left: 5px;
+    background-color: #3c3b3b;
+    margin: 6px 0;
+    transition: 0.4s;
+}
+
+.dropbtn {
+    position: relative;
+    background-color: #949494;
+    color: white;
+    padding: 16px;
+    font-size: 16px;
+    width: 236%;
+    margin-top: 0;
+}
+
+/* The container <div> - needed to position the dropdown content */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+/* Dropdown Content (Hidden by Default) */
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: #f1f1f1;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+    z-index: 1;
+}
+
+/* Links inside the dropdown */
+.dropdown-content a {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+}
+
+/* Change color of dropdown links on hover */
+.dropdown-content a:hover {
+    background-color: #ddd;
+}
+
+/* Show the dropdown menu on hover */
+.dropdown:hover .dropdown-content {
+    display: block;
+}
+
+/* Change the background color of the dropdown button when the dropdown content is shown */
+.dropdown:hover .dropbtn {
+    background-color: #a1a1a1;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotateY(0deg);
+    }
+
+    100% {
+        transform: rotateY(360deg);
+    }
+}
+
+.coin-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    
+}
+
+.coin{
+    position: absolute;
+        margin-top: 10px;
+        top: 0;
+        left: 93%;
+        width: 50px;
+        height: 10px;
+       
+}
+
+.top img {
+    position: relative;
+    left: 93%;
+    width: 30px;
+    height: 30px;
+    animation: spin 2s linear infinite;
+    transform-style: preserve-3d;
+    font-weight: 100;
+    font-style: italic;
+    font-family: serif;
+}
+
+.time {
+    position: absolute;
+    left: 85%;
+}
+
+.Student-details {
+    position: relative;
+    top: 10%;
+    width: 87%;
+    height: 200px;
+    left: 0;
+    border: 0px solid #ccc;
+    border-radius: 5px;
+    background-color: rgb(129, 199, 222);
+}
+
+.circle {
+    position: absolute;
+    left: 10%;
+    width: 20%;
+    padding-left: 20px;
+    border: 0px solid #ccc;
+    border-radius: 5px;
+}
+
+.graduate {
+    width: 50%;
+    padding: 5% 15%;
+    border-radius: 100%;
+}
+
+.details {
+    position: absolute;
+    left: 30%;
+    margin-left: 10px;
+    width: 10%;
+    padding-left: 20px;
+    border: 0px solid #ccc;
+    border-radius: 5px;
+    background-color: rgb(140, 201, 221);
+}
+
+.show_name {
+    position: absolute;
+    left: 38%;
+    margin-left: 10px;
+    width: 22%;
+    padding-left: 20px;
+    border: 0px solid #ccc;
+    border-radius: 5px;
+    background-color: rgb(140, 201, 221);
+}
+
+
+.Hostel {
+    position: absolute;
+    left: 62%;
+    width: 10%;
+    right: 0%;
+    padding-left: 20px;
+    border: 0px solid #ccc;
+    border-radius: 5px;
+    background-color: rgb(140, 201, 221);
+}
+
+.show_hostel {
+    position: absolute;
+    left: 71%;
+    width: 29%;
+    right: 0%;
+    padding-left: 20px;
+    border: 0px solid #ccc;
+    border-radius: 5px;
+    background-color: rgb(140, 201, 221);
+}
+
+.action-components{
+    position: relative;
+        top: 10%;
+        width: 87%;
+        height: 250px;
+        left: 0;
+        border: 0px solid #ccc;
+        border-radius: 5px;
+        background-color: rgb(129, 199, 222);
+
+}
+
+.action {
+    position:relative;
+    top:0px;
+    margin-bottom: 0;
+    left: 31%;
+    height: 250px;
+    width: 40%;
+    display: flex;
+    flex-direction: column;
+    border: 0px solid #ccc;
+    border-radius: 5px;
+    background-color: rgb(140, 201, 221);
+}
+
+.calender {
+    position: absolute;
+    top:0px;
+    left: 73%;
+    
+    margin-left:0%;
+    height: 250px;
+    width: 29%;
+    display: flex;
+    flex-direction: column;
+    border: 0px solid #ccc;
+    border-radius: 5px;
+    background-color: rgb(140, 201, 221);
+}
+
+.action div {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.action h2 {
+    padding-left: 10px;
+    padding-top: 30px;
+    margin: 0;
+}
+
+.action h5 {
+    position: absolute;
+    left: 60%;
+    padding-top: 30px;
+    font-style: italic;
+}
+
+.Sustainable {
+    position: relative;
+    top:22px;
+    left:0;
+    bottom: 0;
+    width: 114.9%;
+    height: 80px;
+    background-color: #45a049;
+    border: 1px #515151;
+    border-radius: 0px;
+}
+
+.Sustainable h1 {
+    text-align: center;
+    margin-bottom: 0;
+}
+
+.Sustainable h3 {
+    margin-top: 0;
+    margin-left: 60%;
+    margin-bottom: 10px;
+}
+.logo{
+    position: relative;
+    top:22px;
+    width:114.9%;
+    height: 74px;
+    background-color:#379c3c;
+}
+.no-wastage{
+    margin-top: 3px;
+    position: relative;
+    height: 60px;
+    width: 60px;
+    left: 10%;
+}
+.sharing{
+    position: relative;
+    height: 60px;
+    width: 60px;
+    left: 30%;
+}
+.happy{
+    top: 5px;
+    position: relative;
+    height: 60px;
+    width: 60px;
+    left: 50%;
+}
+.save{
+    
+    position: relative;
+    top: 5px;
+    height: 60px;
+    width: 60px;
+    left: 70%;
+}
+
+/* Custom Toggle Switch */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 45px;
+    height: 20px;
+    right:20%;
+    top:25%;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 15px;
+    width: 15px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked+.slider {
+    background-color: #4CAF50;
+}
+
+input:checked+.slider:before {
+    transform: translateX(26px);
+}
+
+input:disabled+.slider {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+.meal-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.Add-calender{
+    position: absolute;
+    height: 80%;
+    width: 90%;
+    top:10px;
+    left: 10px;
+    right: 10px;
+    border-radius: 10px;
+     border: 5px solid #949494;
+     background-color:rgb(177, 176, 176);
+}
+
+.add-confirm-button{
+    position: absolute;
+    top:90%;
+    left:40%;
+    border-radius: 3px;
+    border: 0px solid #949494;
+    height: 20px;
+    width: 100px;
+    margin-bottom: 10px;
+}
+
+.selected-date {
+  background-color: green !important; /* Change to your desired color */
+  color: white; /* Optional: Change text color for better contrast */
+}
+
+.Payment{
+    position: absolute;
+    top: 90px;
+    left:10px;
+    background-color: white;
+    width: 60%;
+    border-radius: 5px;
+     border: 5px solid #414d68;
+     font-size: medium;
+     font-weight: 400;
+     font: 1em sans-serif;
+     padding-left: 10px;
+}
+
+/* The Modal (background) */
+.modal {
+    display: block;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgb(0, 0, 0);
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+/* Modal Content/Box */
+.modal-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 400px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+}
+
+/* The Close Button */
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.modal input {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    box-sizing: border-box;
+}
+
+.modal button {
+    background-color: green;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    cursor: pointer;
+    width: 100%;
+    border-radius: 5px;
+}
+
+.modal button:hover {
+    background-color: darkgreen;
+}
