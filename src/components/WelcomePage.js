@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase'; // Make sure this line is included at the top
+import { db } from '../firebase'; 
 import { updatePassword } from 'firebase/auth';
-import { auth } from '../firebase'; // If db was already imported, remove it from here
+import { auth } from '../firebase'; 
 import { signOut } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom'; 
 import Calendar from 'react-calendar';
 import QRCode from 'qrcode.react';
 import '../style.css';
+import bcrypt from 'bcryptjs';
+
 const WelcomePage = ({ userData }) => {
   const [user, setUser] = useState(userData);
   const [meals, setMeals] = useState({
@@ -17,13 +19,13 @@ const WelcomePage = ({ userData }) => {
   });
   const [coins, setCoins] = useState(0);
   const [selectedDates, setSelectedDates] = useState([]);
-  const [showPasswordModal, setShowPasswordModal] = useState(false); // Modal state
-  const [newPassword, setNewPassword] = useState(''); // New password state
+  const [showPasswordModal, setShowPasswordModal] = useState(false); 
+  const [newPassword, setNewPassword] = useState(''); 
   const [disabledDates, setDisabledDates] = useState(new Set());
   const navigate = useNavigate();
   const [qrValue, setQrValue] = useState('');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState('');
 
 
 
@@ -79,8 +81,8 @@ const [paymentAmount, setPaymentAmount] = useState('');
 
   const handleSignOut = async () => {
     try {
-      await signOut(auth); // Sign out the user
-      navigate('/login'); // Redirect to the login page
+      await signOut(auth); 
+      navigate('/login'); 
     } catch (error) {
       console.error('Error signing out:', error);
       alert('Error signing out:');
@@ -90,7 +92,7 @@ const [paymentAmount, setPaymentAmount] = useState('');
 
   const handleToggleChange = async (mealType) => {
     const now = new Date();
-    const userDocRef = doc(db, 'Residents', user.Roll.toString());
+    const userDocRef = doc(db, 'Residents', user.Email.toString());
     const newStatus = !meals[mealType];
 
     setMeals((prevMeals) => ({
@@ -215,7 +217,7 @@ const [paymentAmount, setPaymentAmount] = useState('');
 };
 
   const handleConfirmClick = async () => {
-  const userDocRef = doc(db, 'Residents', user.Roll.toString());
+  const userDocRef = doc(db, 'Residents', user.Email.toString());
   const newDisabledDates = new Set(disabledDates);
 
   if (selectedDates.length === 2) {
@@ -229,7 +231,6 @@ const [paymentAmount, setPaymentAmount] = useState('');
       const formattedDate = currentDate.toISOString().split('T')[0];
       newDisabledDates.add(formattedDate);
 
-      // Calculate the time until midnight (or another specified time) on the currentDate
       const midnight = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 0, 0, 0);
       const timeUntilMidnight = midnight.getTime() - Date.now();
 
@@ -264,20 +265,28 @@ const isDateDisabled = (date) => {
 };
 
     const handlePasswordChange = async () => {
-    if (newPassword) {
-      try {
-        const user = auth.currentUser;
-        await updatePassword(user, newPassword);
-        alert('Password changed successfully.');
-        setShowPasswordModal(false);
-      } catch (error) {
-        console.error('Error changing password:', error);
-        alert('Failed to change password. Please try again.');
-      }
-    } else {
-      alert('Please enter a new password.');
+  if (newPassword) {
+    try {
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+      const userDocRef = doc(db, 'Residents', user.Email.toString());
+
+      await updateDoc(userDocRef, {
+        Password: hashedPassword
+      });
+
+      alert('Password changed successfully.');
+      setShowPasswordModal(false); 
+    } catch (error) {
+      console.error('Error changing password:', error);
+      alert('Failed to change password. Please try again.');
     }
-  };
+  } else {
+    alert('Please enter a new password.');
+  }
+};
+
 
   const handlePaymentClick = () => {
     setShowPaymentModal(true);
@@ -304,7 +313,7 @@ const isDateDisabled = (date) => {
           <div id="myDropdown" className="dropdown-content">
             <a href="#" onClick={() => setShowPasswordModal(true)}>Change Password</a>
             <a href="mailto:yraj_be21@thapar.edu">Contact us</a>
-               <a onClick={handleSignOut}>Sign out</a> {/* Sign out button */}
+               <a onClick={handleSignOut}>Sign out</a> 
           </div>
         </div>
         <a className='Payment' onClick={handlePaymentClick}>Make Payment</a>

@@ -1,40 +1,50 @@
 import React, { useState } from 'react';
-import { auth, db } from '../firebase'; // Importing auth and db from firebase
+import { auth, db } from '../firebase'; 
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
+import bcrypt from 'bcryptjs'; 
 
 const LoginPage = ({ onLogin }) => {
-  const [rollNumber, setRollNumber] = useState(''); // State for roll number
-  const [password, setPassword] = useState(''); // State for password
-  const navigate = useNavigate(); // Hook to handle navigation
+  const [email, setEmail] = useState(''); 
+  const [password, setPassword] = useState(''); 
+  const navigate = useNavigate(); 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const email = `${rollNumber}@yourdomain.com`; // Forming the email using roll number
 
     try {
-      // Signing in the user
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      
-      // Fetching user data from Firestore
-      const userDocRef = doc(db, 'Residents', rollNumber);
-      const userDoc = await getDoc(userDocRef);
+      const residentDocRef = doc(db, 'Residents', email);
+      const residentDoc = await getDoc(residentDocRef);
 
-      if (userDoc.exists()) {
-        const userData = {
-          rollNumber,
-          ...userDoc.data(), // Spreading the document data to include in userData
-        };
-        onLogin(userData); // Passing the user data to parent component
-        navigate('/welcome'); // Redirecting to the welcome page
+      if (residentDoc.exists()) {
+        const residentData = residentDoc.data();
+        const storedHashedPassword = residentData.Password; 
+
+
+        const isPasswordMatch = await bcrypt.compare(password, storedHashedPassword);
+
+        if (isPasswordMatch) {
+          onLogin({ email, ...residentData }, 'resident');
+          navigate('/welcome'); 
+        } else {
+          alert('Incorrect password for Resident');
+        }
       } else {
-        console.error("No such document in Firestore!");
-      }
+        const adminDocRef = doc(db, 'Admin', email);
+        const adminDoc = await getDoc(adminDocRef);
 
+        if (adminDoc.exists()) {
+          await signInWithEmailAndPassword(auth, email, password);
+          onLogin({ email, ...adminDoc.data() }, 'admin');
+          navigate('/signup'); 
+        } else {
+          alert('No such user found in either collection');
+        }
+      }
     } catch (error) {
-      console.error("Error signing in: ", error);
-      alert("Error signing in/Check password ");
+      console.error('Error during login:', error);
+      alert('Login failed. Please try again.');
     }
   };
 
@@ -42,11 +52,11 @@ const LoginPage = ({ onLogin }) => {
     <div className="form-container">
       <form onSubmit={handleSubmit}>
         <input
-          type="text"
-          name="rollNumber"
-          value={rollNumber}
-          onChange={(e) => setRollNumber(e.target.value)}
-          placeholder="Enter your roll number (Tester:102105093)"
+          type="email"
+          name="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Enter your email"
           required
         />
         <input
@@ -54,7 +64,7 @@ const LoginPage = ({ onLogin }) => {
           name="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="Enter Password (Tester:Hellouser)"
+          placeholder="Enter Password"
           required
         />
         <input type="submit" value="Login" />
