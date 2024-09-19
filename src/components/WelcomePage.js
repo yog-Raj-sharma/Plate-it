@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react'; 
+import { ref, get, update } from 'firebase/database'; 
 import { db } from '../firebase'; 
 import { updatePassword } from 'firebase/auth';
-import { auth } from '../firebase'; 
-import { signOut } from 'firebase/auth';
+import { getAuth, signOut } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom'; 
 import Calendar from 'react-calendar';
 import QRCode from 'qrcode.react';
@@ -27,8 +26,6 @@ const WelcomePage = ({ userData }) => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
 
-
-
   useEffect(() => {
     const fetchUserData = async () => {
       if (!userData) {
@@ -39,11 +36,11 @@ const WelcomePage = ({ userData }) => {
       }
 
       if (user) {
-        const userDocRef = doc(db, 'Residents', user.Roll.toString());
-        const userDoc = await getDoc(userDocRef);
+        const userRef = ref(db, `Residents/${user.Roll.toString()}`);
+        const userSnapshot = await get(userRef);
 
-        if (userDoc.exists()) {
-          const data = userDoc.data();
+        if (userSnapshot.exists()) {
+          const data = userSnapshot.val();
           setCoins(data.Coins || 0);
         }
       }
@@ -74,130 +71,189 @@ const WelcomePage = ({ userData }) => {
     return () => clearInterval(interval);
   }, []);
 
-    const myFunction = () => {
+  const myFunction = () => {
     const dropdown = document.getElementById('myDropdown');
     dropdown.classList.toggle('show');
   };
 
   const handleSignOut = async () => {
     try {
-      await signOut(auth); 
       navigate('/login'); 
     } catch (error) {
       console.error('Error signing out:', error);
       alert('Error signing out:');
     }
   };
+ 
+  useEffect(() => {
+    const fetchMealPreferences = async () => {
+      const emailPrefix = user.Email.split('@')[0]; 
+      const userRef = ref(db, `Residents/${emailPrefix}`);
+
+      try {
+        const snapshot = await get(userRef);
+        if (snapshot.exists()) {
+          const userData = snapshot.val();
+
+          setMeals(userData.meals || { breakfast: true, lunch: true, dinner: true });
+          setCoins(userData.Coins || 0);
+        }
+      } catch (error) {
+        console.error('Error fetching meal preferences:', error);
+      }
+    };
+
+    fetchMealPreferences();
+  }, [user.Email]);
+
+  useEffect(() => {
+  const fetchDisabledDates = async () => {
+    try {
+      const emailPrefix = user.Email.split('@')[0];
+      const userRef = ref(db, `Residents/${emailPrefix}/disabledDates`);
+      
+      const snapshot = await get(userRef);
+      
+      if (snapshot.exists()) {
+        const fetchedDates = snapshot.val();
+
+        const newDisabledDates = new Set(fetchedDates);
+        setDisabledDates(newDisabledDates);
+      }
+    } catch (error) {
+      console.error('Error fetching disabled dates:', error);
+    }
+  };
+
+  fetchDisabledDates();
+}, [user]);
 
 
   const handleToggleChange = async (mealType) => {
-    const now = new Date();
-    const userDocRef = doc(db, 'Residents', user.Email.toString());
+    const emailPrefix = user.Email.split('@')[0];
+    const userRef = ref(db, `Residents/${emailPrefix}`);
+    
     const newStatus = !meals[mealType];
-
     setMeals((prevMeals) => ({
       ...prevMeals,
       [mealType]: newStatus,
     }));
+    await update(userRef, {
+      [`meals/${mealType}`]: newStatus,
+    });
+  };
 
-    if (!newStatus) {
-      const mealTimes = {
-        breakfast: { start: 7, end: 10 },
-        lunch: { start: 13, end: 14.5 },
-        dinner: { start: 17, end: 21.5 },
-      };
+  const handleDateChange = (dates) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);  
 
-      const mealTime = mealTimes[mealType];
-      const currentHour = now.getHours() + now.getMinutes() / 60;
+    const fifteenDaysFromNow = new Date(today);
+    fifteenDaysFromNow.setDate(today.getDate() + 15);  
+    fifteenDaysFromNow.setHours(0, 0, 0, 0);  
 
-      if (currentHour < mealTime.start) {
-        setCoins((prevCoins) => prevCoins + 25);
-        await updateDoc(userDocRef, {
-          Coins: coins + 25,
-        });
+    const filteredDates = dates.filter(date => {
+      const selectedDate = new Date(date);
+      selectedDate.setHours(0, 0, 0, 0); 
 
-        const nextMealTime = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate(),
-          mealTime.start,
-          0,
-          0
-        );
-        const timeUntilNextMeal = nextMealTime.getTime() - now.getTime();
+      return selectedDate >= today && selectedDate <= fifteenDaysFromNow;
+    });
 
-        setTimeout(async () => {
-          setMeals((prevMeals) => ({
-            ...prevMeals,
-            [mealType]: false,
-          }));
-
-          await updateDoc(userDocRef, {
-            Fingerprint: false,
-          });
-        }, timeUntilNextMeal);
-      } else if (currentHour > mealTime.end) {
-        setCoins((prevCoins) => prevCoins + 25);
-        await updateDoc(userDocRef, {
-          Coins: coins + 25,
-        });
-
-        const nextMealTime = new Date(
-          now.getFullYear(),
-          now.getMonth(),
-          now.getDate() + 1,
-          mealTime.start,
-          0,
-          0
-        );
-        const timeUntilNextMeal = nextMealTime.getTime() - now.getTime();
-
-        setTimeout(async () => {
-          setMeals((prevMeals) => ({
-            ...prevMeals,
-            [mealType]: false,
-          }));
-
-          await updateDoc(userDocRef, {
-            Fingerprint: false,
-          });
-        }, timeUntilNextMeal);
-      }
+    if (filteredDates.length <= 2) {
+      setSelectedDates(filteredDates);  
     } else {
-      setCoins((prevCoins) => prevCoins - 25);
-      await updateDoc(userDocRef, {
-        Coins: coins - 25,
-        Fingerprint: true,
-      });
-    }
-
-    let revertTime;
-
-    if (mealType === 'breakfast') {
-      revertTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 10, 0, 0);
-    } else if (mealType === 'lunch') {
-      revertTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14, 30, 0);
-    } else if (mealType === 'dinner') {
-      revertTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 21, 30, 0);
-    }
-
-    const timeUntilRevert = revertTime.getTime() - now.getTime();
-
-    if (timeUntilRevert > 0) {
-      setTimeout(async () => {
-        setMeals((prevMeals) => ({
-          ...prevMeals,
-          [mealType]: true,
-        }));
-
-        await updateDoc(userDocRef, {
-          Fingerprint: true,
-        });
-      }, timeUntilRevert);
+      alert('You can select only up to 2 days.');
     }
   };
 
-  const isSwitchDisabled = (mealType, date) => {
+  const handleConfirmClick = async () => {
+  const emailPrefix = user.Email.split('@')[0]; 
+  const userRef = ref(db, `Residents/${emailPrefix}`);
+
+  const newDisabledDates = new Set(disabledDates);
+
+  if (selectedDates.length === 2) {
+    const startDate = new Date(selectedDates[0]);
+    const endDate = new Date(selectedDates[1]);
+    const daysBetween = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+    const datesArray = [];
+
+    for (let i = 0; i <= daysBetween; i++) {
+      const currentDate = new Date(startDate);
+      currentDate.setDate(startDate.getDate() + i);
+
+      const formattedDate = currentDate.toISOString().split('T')[0];
+      newDisabledDates.add(formattedDate);
+      datesArray.push(formattedDate);
+
+      const midnight = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 0, 0, 0);
+      const timeUntilMidnight = midnight.getTime() - Date.now();
+
+      setTimeout(async () => {
+        await update(userRef, { Fingerprint: false });
+      }, timeUntilMidnight);
+    }
+
+    await update(userRef, { disabledDates: Array.from(newDisabledDates) });
+
+    setDisabledDates(newDisabledDates);
+    setSelectedDates([]);
+  } else {
+    alert("Please select exactly 2 dates.");
+  }
+};
+
+const isDateDisabled = (date) => {
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate());
+
+  const fifteenDaysFromTomorrow = new Date(tomorrow);
+  fifteenDaysFromTomorrow.setDate(tomorrow.getDate() + 15);
+
+  const formattedDate = date.toISOString().split('T')[0];
+
+  return (
+    date < tomorrow ||
+    date > fifteenDaysFromTomorrow || 
+    disabledDates.has(formattedDate) 
+  );
+};
+
+
+  const handlePasswordChange = async () => {
+    if (newPassword) {
+      try {
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+        const emailPrefix = user.Email.split('@')[0]; 
+        const userRef = ref(db, `Residents/${emailPrefix}`);
+
+        await update(userRef, { Password: hashedPassword });
+
+        alert('Password changed successfully.');
+        setShowPasswordModal(false); 
+      } catch (error) {
+        console.error('Error changing password:', error);
+        alert('Failed to change password. Please try again.');
+      }
+    } else {
+      alert('Please enter a new password.');
+    }
+  };
+
+  const handlePaymentClick = () => {
+    setShowPaymentModal(true);
+  };
+
+  const handlePay = () => {
+    if (paymentAmount) {
+      setQrValue(`Amount: ${paymentAmount} coins`);
+    } else {
+      alert('Please enter an amount.');
+    }
+  };
+   const isSwitchDisabled = (mealType, date) => {
     const now = new Date();
     const currentHour = now.getHours() + now.getMinutes() / 60;
 
@@ -212,93 +268,6 @@ const WelcomePage = ({ userData }) => {
     return currentHour >= mealTime.start && currentHour < mealTime.end;
   };
 
-   const handleDateChange = (dates) => {
-  setSelectedDates(dates);
-};
-
-  const handleConfirmClick = async () => {
-  const userDocRef = doc(db, 'Residents', user.Email.toString());
-  const newDisabledDates = new Set(disabledDates);
-
-  if (selectedDates.length === 2) {
-    const startDate = new Date(selectedDates[0]);
-    const endDate = new Date(selectedDates[1]);
-    const daysBetween = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
-
-    for (let i = 0; i <= daysBetween; i++) {
-      const currentDate = new Date(startDate);
-      currentDate.setDate(startDate.getDate() + i);
-      const formattedDate = currentDate.toISOString().split('T')[0];
-      newDisabledDates.add(formattedDate);
-
-      const midnight = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate(), 0, 0, 0);
-      const timeUntilMidnight = midnight.getTime() - Date.now();
-
-      setTimeout(async () => {
-        await updateDoc(userDocRef, {
-          Fingerprint: false,
-        });
-
-        setCoins((prevCoins) => prevCoins + 50);
-        await updateDoc(userDocRef, {
-          Coins: coins + 50,
-        });
-      }, timeUntilMidnight);
-    }
-  }
-
-  setDisabledDates(newDisabledDates);
-  setSelectedDates([]);
-};
-
-const isDateDisabled = (date) => {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const fifteenDaysFromNow = new Date(today);
-  fifteenDaysFromNow.setDate(today.getDate() + 15);
-
-  return (
-    disabledDates.has(date.toISOString().split('T')[0]) || 
-    date < today || 
-    date > fifteenDaysFromNow
-  );
-};
-
-    const handlePasswordChange = async () => {
-  if (newPassword) {
-    try {
-      const saltRounds = 10;
-      const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-
-      const userDocRef = doc(db, 'Residents', user.Email.toString());
-
-      await updateDoc(userDocRef, {
-        Password: hashedPassword
-      });
-
-      alert('Password changed successfully.');
-      setShowPasswordModal(false); 
-    } catch (error) {
-      console.error('Error changing password:', error);
-      alert('Failed to change password. Please try again.');
-    }
-  } else {
-    alert('Please enter a new password.');
-  }
-};
-
-
-  const handlePaymentClick = () => {
-    setShowPaymentModal(true);
-  };
-
-  const handlePay = () => {
-    if (paymentAmount) {
-      setQrValue(`Amount: ${paymentAmount} coins`);
-    } else {
-      alert('Please enter an amount.');
-    }
-  };
 
 
   return (
@@ -355,13 +324,13 @@ const isDateDisabled = (date) => {
           <div className="calender">
             <div className="Add-calender">
               <Calendar
-                onChange={handleDateChange}
-                value={selectedDates}
-                selectRange={true}
-                tileDisabled={({ date }) => isDateDisabled(date)}
-                tileClassName={({ date }) => selectedDates.some(selectedDate =>
-                  date.toISOString().split('T')[0] === selectedDate.toISOString().split('T')[0])
-                  ? 'selected-date' : null
+                 onChange={handleDateChange}
+                 value={selectedDates}
+                 selectRange={true}
+                 tileDisabled={({ date }) => isDateDisabled(date)}
+                 tileClassName={({ date }) => selectedDates.some(selectedDate =>
+                 date.toISOString().split('T')[0] === selectedDate.toISOString().split('T')[0])
+                     ? 'selected-date' : null
                 }
               />
             </div>
@@ -407,16 +376,15 @@ const isDateDisabled = (date) => {
       </span>
       <h2>Change Password</h2>
       <input
-        type="password"
+        type="text"
         placeholder="Enter new password"
         value={newPassword}
         onChange={(e) => setNewPassword(e.target.value)}
       />
       <button onClick={handlePasswordChange}>Submit</button>
-    </div>
-  </div>
-)}
-
+         </div>
+         </div>
+           )}
           <div className="action">
             <div className={`box meal-option ${meals.breakfast ? '' : 'disabled'}`}>
               <h2>Breakfast</h2>

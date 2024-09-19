@@ -1,0 +1,253 @@
+#include <WiFi.h>
+#include <FirebaseESP32.h>
+#include <Adafruit_Fingerprint.h>
+
+// Firebase and WiFi configuration
+#define FIREBASE_HOST "plate-it-52b6b-default-rtdb.asia-southeast1.firebasedatabase.app"
+#define FIREBASE_AUTH "AIzaSyDR7BFvNAYghjzEiSe6lzoLHBBwef107qc"
+#define WIFI_SSID "iPhone"
+#define WIFI_PASSWORD "qazxcvbnmn"
+
+// Fingerprint sensor configuration
+#define RX_PIN 16  // RX pin for ESP32
+#define TX_PIN 17  // TX pin for ESP32
+
+#define RED_LED 22
+#define GREEN_LED 23
+// Firebase and sensor objects
+FirebaseData firebaseData;
+FirebaseAuth auth;
+FirebaseConfig config;
+HardwareSerial mySerial(2);  // Use hardware serial port 2 (pins 16, 17)
+Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
+
+// Declare the global variable
+bool uniqueIDRequested = false;
+
+void setup() {
+  Serial.begin(115200);
+  delay(100);
+
+  mySerial.begin(57600, SERIAL_8N1, RX_PIN, TX_PIN);  // Changed to Serial2 for ESP32
+  delay(100);
+
+  Serial.println("ESP32 and Fingerprint Sensor Communication Test");
+  mySerial.println("Testing Fingerprint Sensor Serial Communication");
+  pinMode(RED_LED, OUTPUT);
+  pinMode(GREEN_LED, OUTPUT);
+  connectToWiFi();
+  setupFirebase();
+  setupFingerprint();
+}
+
+void loop() {
+    
+  uint8_t p = finger.getImage();
+  if (p != FINGERPRINT_OK) {
+    Serial.println("Finger not detected");
+    delay(1000);
+    return ;
+  }
+
+  // Convert the image to template in buffer 1
+  p = finger.image2Tz(1);
+  if (p != FINGERPRINT_OK) {
+    Serial.println("Failed to convert image to template (buffer 1).");
+    return;
+  }
+
+  // Capture the second image (for buffer 2)
+  p = finger.getImage();
+  if (p != FINGERPRINT_OK) {
+    Serial.println("Failed to get second image.");
+    return;
+  }
+
+  // Convert the second image to template in buffer 2
+  p = finger.image2Tz(2);
+  if (p != FINGERPRINT_OK) {
+    Serial.println("Failed to convert second image to template (buffer 2).");
+    return;
+  }
+
+  // Create a model from the two templates
+  p = finger.createModel();
+  if (p != FINGERPRINT_OK) {
+    Serial.println("Failed to create fingerprint model.");
+    return;
+  }
+
+  if (p == FINGERPRINT_OK) {
+    // Fetch the boolean value from Firebase
+    if (Firebase.getBool(firebaseData, "/Requests/UniqueID/requested")) {
+      Serial.print("Requested Value from Firebase: ");
+      Serial.println(firebaseData.boolData());  // Debugging line
+
+      // Use the stored value in the if statement
+      if (firebaseData.boolData()) {
+        uniqueIDRequested = true;
+      } else {
+        uniqueIDRequested = false;
+      }
+
+      if (uniqueIDRequested) {
+        handleUniqueIDRequest();
+      } else {
+        handleBackgroundFingerprintScan();
+      }
+    }else {
+      Serial.print("Failed to retrieve requested value from Firebase: ");
+      Serial.println(firebaseData.errorReason());  // Print the error message for debugging
+    }
+  }
+
+  delay(2000);  // Add some delay between requests to prevent Firebase from being overloaded
+}
+
+void setupFingerprint() {
+  Serial.println(F("Initializing fingerprint sensor..."));
+  
+  finger.begin(57600);
+  uint8_t id = finger.getTemplateCount();
+  if (id == FINGERPRINT_OK) {
+    Serial.println(F("Fingerprint sensor detected and ready."));
+  } else {
+    Serial.println(F("Fingerprint sensor not found or communication failure."));
+    while (true) {
+      delay(100);  // Halt if the sensor is not detected
+    }
+  }
+}
+
+void connectToWiFi() {
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("Connected to WiFi");
+}
+
+void setupFirebase() {
+  config.host = FIREBASE_HOST;
+  config.signer.tokens.legacy_token = FIREBASE_AUTH;
+  Firebase.begin(&config, &auth);
+  Firebase.reconnectWiFi(true);
+}
+
+void handleUniqueIDRequest() {
+  String templateID = matchFingerprint();  // Try matching fingerprint
+
+  if (templateID.length() > 0 && templateID != "-1") {
+    // Return the matched ID if found
+    Firebase.setString(firebaseData, "/Responses/UniqueID/uniqueID", templateID);
+  } else {
+    if(templateID != "-1"){
+      // Store the template with a new unique ID and return that ID
+
+      if (finger.getTemplateCount() == FINGERPRINT_OK) {
+  Serial.print("Assigned UniqueID is: ");
+  Serial.println(finger.templateCount);  // Access the template count
+   int currentFingerprintID = finger.templateCount +1;
+
+    if (finger.storeModel(currentFingerprintID) == FINGERPRINT_OK) {
+     
+      Firebase.setString(firebaseData, "/Responses/UniqueID/uniqueID", currentFingerprintID);
+    } else {
+      Firebase.setString(firebaseData, "/Responses/UniqueID/error", "Failed to capture fingerprint");
+    }
+    } }
+    else{
+       Firebase.setString(firebaseData, "/Responses/UniqueID/error", "Request again for UniqueID");
+    }
+  }
+  Firebase.setBool(firebaseData, "/Requests/UniqueID/requested", false);
+  uniqueIDRequested = false;  // Reset after handling request
+}
+
+void handleBackgroundFingerprintScan() {
+  String templateID = matchFingerprint();  // Try matching fingerprint
+  if (templateID.length() > 0 && templateID != "-1") {
+    if (checkFingerprintInBiometrics(templateID)) {
+      Serial.println(F("Fingerprint found and processed."));
+    } else {
+      Serial.println(F("Fingerprint not found in Biometrics."));
+    }
+  } else {
+    digitalWrite(RED_LED, HIGH);  // Turn on the LED
+  delay(2000);  // Wait for 2 seconds
+  digitalWrite(RED_LED, LOW);
+    Serial.println(F("No match found or chance of duplicacy try again, returning false"));
+  }
+}
+
+String matchFingerprint() {
+  if (finger.getTemplateCount() == FINGERPRINT_OK) {
+  Serial.print("Number of templates stored: ");
+  Serial.println(finger.templateCount);  // Access the template count
+} else {
+  Serial.println("Error: Could not retrieve the template count.");
+}
+  int searchResult = finger.fingerFastSearch();
+  Serial.print("Finger Fast Search result: ");
+  Serial.println(searchResult);
+  
+  if (searchResult == FINGERPRINT_OK && finger.confidence >= 70) {
+    Serial.println(F("Template match found. ID is: "));
+    Serial.println(finger.fingerID);
+    Serial.print("Confidence Level: ");
+    Serial.println(finger.confidence);
+    
+    return String(finger.fingerID);  // Return matched template ID if confidence >= 10%
+  }
+
+  else if (searchResult == FINGERPRINT_OK && finger.confidence <70 && finger.confidence >20){
+     Serial.println(F("Chance of duplicacy for ID : "));
+    Serial.println(finger.fingerID);
+    Serial.println(F("Therefore re-request for uniqueID"));
+    Serial.print("Confidence Level: ");
+    Serial.println(finger.confidence);
+    return "-1";
+  }
+
+  Serial.println(F("Template match not found"));
+  Serial.print("Confidence Level: ");
+  Serial.println(finger.confidence);
+  
+  return "";  // Return empty if no match is found
+}
+
+
+bool checkFingerprintInBiometrics(String templateID) {
+  String path = "/Biometrics/" + templateID;  // Path in Firebase for biometrics data
+  if (Firebase.getString(firebaseData, path + "/Email")) {
+    String email = firebaseData.stringData();
+    return checkResidentFingerprint(email);  // Check resident data using the email
+  }
+  digitalWrite(RED_LED, HIGH);  // Turn on the LED
+  delay(4000);  // Wait for 2 seconds
+  digitalWrite(RED_LED, LOW);
+  return false;  // Return false if fingerprint is not found in Biometrics
+}
+
+bool checkResidentFingerprint(String email) {
+  String path = "/Residents/" + email;  // Path in Firebase for resident data
+  if (Firebase.getBool(firebaseData, path + "/Fingerprint")) {
+     if(firebaseData.boolData()){
+       digitalWrite(GREEN_LED, HIGH);  // Turn on the LED
+   delay(2000);  // Wait for 2 seconds
+   digitalWrite(GREEN_LED, LOW);
+     }
+     else {
+       digitalWrite(RED_LED, HIGH);  // Turn on the LED
+  delay(2000);  // Wait for 2 seconds
+  digitalWrite(RED_LED, LOW); 
+  return false;
+     }
+    return firebaseData.boolData();  // Return the boolean value of 'Fingerprint' field
+  }
+  digitalWrite(RED_LED, HIGH);  // Turn on the LED
+  delay(4000);  // Wait for 2 seconds
+  digitalWrite(RED_LED, LOW); 
+  return false;  // Return false if fingerprint data is not found
+}

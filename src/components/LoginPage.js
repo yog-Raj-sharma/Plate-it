@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { auth, db } from '../firebase'; 
+import { auth } from '../firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { getDatabase, ref, get, child } from 'firebase/database';
 import { useNavigate } from 'react-router-dom';
-import bcrypt from 'bcryptjs'; 
+import bcrypt from 'bcryptjs';
 
 const LoginPage = ({ onLogin }) => {
   const [email, setEmail] = useState(''); 
@@ -12,32 +12,34 @@ const LoginPage = ({ onLogin }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const db = getDatabase(); 
+    const emailPrefix = email.split('@')[0]; 
 
     try {
-      const residentDocRef = doc(db, 'Residents', email);
-      const residentDoc = await getDoc(residentDocRef);
+      const residentRef = ref(db, `Residents/${emailPrefix}`);
+      const residentSnapshot = await get(residentRef);
 
-      if (residentDoc.exists()) {
-        const residentData = residentDoc.data();
-        const storedHashedPassword = residentData.Password; 
-
+      if (residentSnapshot.exists()) {
+        const residentData = residentSnapshot.val();
+        const storedHashedPassword = residentData.Password;
 
         const isPasswordMatch = await bcrypt.compare(password, storedHashedPassword);
 
         if (isPasswordMatch) {
           onLogin({ email, ...residentData }, 'resident');
-          navigate('/welcome'); 
+          navigate('/welcome');
         } else {
           alert('Incorrect password for Resident');
         }
       } else {
-        const adminDocRef = doc(db, 'Admin', email);
-        const adminDoc = await getDoc(adminDocRef);
+        const adminRef = ref(db, `Admin/${emailPrefix}`);
+        const adminSnapshot = await get(adminRef);
 
-        if (adminDoc.exists()) {
+        if (adminSnapshot.exists()) {
+          
           await signInWithEmailAndPassword(auth, email, password);
-          onLogin({ email, ...adminDoc.data() }, 'admin');
-          navigate('/signup'); 
+          onLogin({ email, ...adminSnapshot.val() }, 'admin');
+          navigate('/signup');
         } else {
           alert('No such user found in either collection');
         }
